@@ -7,8 +7,6 @@ import {
   ScrollView,
   Pressable,
   TouchableOpacity,
-  SafeAreaView,
-  StatusBar,
 } from 'react-native';
 
 export default function App() {
@@ -19,8 +17,7 @@ export default function App() {
   const categories = ['Action', 'Sci-Fi', 'Drama', 'Anime', 'Thriller', 'Documentary'];
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#0B0E14" />
+    <View style={styles.safeArea}>
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
@@ -278,7 +275,7 @@ export default function App() {
           </Text>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -286,6 +283,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#0B0E14',
+    paddingTop: 40,
   },
   container: {
     flex: 1,
