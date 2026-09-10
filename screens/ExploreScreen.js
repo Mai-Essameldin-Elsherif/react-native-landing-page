@@ -8,19 +8,11 @@ import {
   ScrollView,
   Pressable,
   TouchableOpacity,
-  ActivityIndicator,
 } from 'react-native';
-
-const INITIAL_MOVIES = [
-  { id: '1', title: 'Inception', genre: 'Sci-Fi', rating: '9.0', year: '2010' },
-  { id: '2', title: 'The Dark Knight', genre: 'Action', rating: '9.5', year: '2008' },
-  { id: '3', title: 'Interstellar', genre: 'Sci-Fi', rating: '8.6', year: '2014' },
-  { id: '4', title: 'Parasite', genre: 'Thriller', rating: '8.5', year: '2019' },
-  { id: '5', title: 'The Godfather', genre: 'Drama', rating: '9.2', year: '1972' },
-  { id: '6', title: 'Spirited Away', genre: 'Anime', rating: '8.6', year: '2001' },
-  { id: '7', title: 'Mad Max: Fury Road', genre: 'Action', rating: '8.1', year: '2015' },
-  { id: '8', title: 'Get Out', genre: 'Horror', rating: '7.8', year: '2017' },
-];
+import { getMovies } from '../src/services/api';
+import { useTheme } from '../src/context/ThemeContext';
+import CustomCard from '../src/components/CustomCard';
+import LoadingSpinner from '../src/components/LoadingSpinner';
 
 const SECTION_DATA = [
   {
@@ -55,19 +47,44 @@ const SECTION_DATA = [
 const QUICK_FILTERS = ['All', 'Sci-Fi', 'Action', 'Drama', 'Thriller', 'Anime', 'Horror'];
 
 export default function ExploreScreen() {
+  const { theme } = useTheme();
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('All');
   const [loadTime, setLoadTime] = useState(null);
 
   useEffect(() => {
+    let isMounted = true;
     const start = Date.now();
-    const timer = setTimeout(() => {
-      setMovies(INITIAL_MOVIES);
-      setLoading(false);
-      setLoadTime(Date.now() - start);
-    }, 1200);
-    return () => clearTimeout(timer);
+
+    const fetchCatalog = async () => {
+      try {
+        setLoading(true);
+        const data = await getMovies(10);
+        if (isMounted) {
+          const mappedMovies = data.map((item, index) => ({
+            id: item.id.toString(),
+            title: item.title,
+            genre: ['Sci-Fi', 'Action', 'Drama', 'Thriller', 'Anime', 'Horror'][index % 6],
+            rating: (8.0 + (index % 15) * 0.1).toFixed(1),
+            year: (2010 + index).toString(),
+          }));
+          setMovies(mappedMovies);
+          setLoadTime(Date.now() - start);
+        }
+      } catch (error) {
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchCatalog();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const filteredMovies =
@@ -76,7 +93,7 @@ export default function ExploreScreen() {
       : movies.filter((m) => m.genre === activeFilter);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -84,11 +101,11 @@ export default function ExploreScreen() {
       >
         <View style={styles.headerSection}>
           <View style={styles.tagBadge}>
-            <Text style={styles.tagBadgeText}>✦ DISCOVER & EXPLORE</Text>
+            <Text style={styles.tagBadgeText}>✦ AXIOS GET CATALOG & FILTERS</Text>
           </View>
-          <Text style={styles.screenTitle}>Movie Catalog</Text>
-          <Text style={styles.screenSubtitle}>
-            Browse thousands of curated titles across all genres.
+          <Text style={[styles.screenTitle, { color: theme.text }]}>Movie Catalog</Text>
+          <Text style={[styles.screenSubtitle, { color: theme.textMuted }]}>
+            Browse thousands of curated titles fetched via Axios instance with useEffect.
           </Text>
         </View>
 
@@ -103,11 +120,16 @@ export default function ExploreScreen() {
               <Pressable
                 key={f}
                 onPress={() => setActiveFilter(f)}
-                style={[styles.filterChip, activeFilter === f && styles.filterChipActive]}
+                style={[
+                  styles.filterChip,
+                  { backgroundColor: theme.chipBg, borderColor: theme.cardBorder },
+                  activeFilter === f && styles.filterChipActive,
+                ]}
               >
                 <Text
                   style={[
                     styles.filterChipText,
+                    { color: theme.textMuted },
                     activeFilter === f && styles.filterChipTextActive,
                   ]}
                 >
@@ -120,49 +142,53 @@ export default function ExploreScreen() {
 
         <View style={styles.flatListSection}>
           <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionLabel}>MOVIE LIST</Text>
+            <Text style={styles.sectionLabel}>MOVIE LIST (AXIOS GET)</Text>
             {loadTime && (
-              <Text style={styles.loadTimeText}>Loaded in {loadTime}ms</Text>
+              <Text style={styles.loadTimeText}>Axios loaded in {loadTime}ms</Text>
             )}
           </View>
-          <Text style={styles.sectionTitle}>
+
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
             {activeFilter === 'All' ? 'All Movies' : activeFilter} ({filteredMovies.length})
           </Text>
 
           {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#6366F1" />
-              <Text style={styles.loadingText}>Fetching catalog...</Text>
-            </View>
+            <LoadingSpinner message="Fetching Axios Movie Catalog..." />
           ) : (
             <FlatList
               data={filteredMovies}
               keyExtractor={(item) => item.id}
               scrollEnabled={false}
               renderItem={({ item, index }) => (
-                <TouchableOpacity style={styles.movieRow} activeOpacity={0.7}>
-                  <View style={styles.movieRankBox}>
-                    <Text style={styles.movieRank}>#{index + 1}</Text>
-                  </View>
-                  <View style={styles.movieInfo}>
-                    <Text style={styles.movieTitle}>{item.title}</Text>
-                    <View style={styles.movieMeta}>
-                      <View style={styles.genreTag}>
-                        <Text style={styles.genreTagText}>{item.genre}</Text>
-                      </View>
-                      <Text style={styles.movieYear}>{item.year}</Text>
+                <TouchableOpacity activeOpacity={0.75}>
+                  <CustomCard style={styles.movieRow}>
+                    <View style={styles.movieRankBox}>
+                      <Text style={styles.movieRank}>#{index + 1}</Text>
                     </View>
-                  </View>
-                  <View style={styles.ratingBox}>
-                    <Text style={styles.ratingStar}>★</Text>
-                    <Text style={styles.ratingValue}>{item.rating}</Text>
-                  </View>
+                    <View style={styles.movieInfo}>
+                      <Text style={[styles.movieTitle, { color: theme.text }]} numberOfLines={1}>
+                        {item.title}
+                      </Text>
+                      <View style={styles.movieMeta}>
+                        <View style={styles.genreTag}>
+                          <Text style={styles.genreTagText}>{item.genre}</Text>
+                        </View>
+                        <Text style={[styles.movieYear, { color: theme.textMuted }]}>{item.year}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.ratingBox}>
+                      <Text style={styles.ratingStar}>★</Text>
+                      <Text style={styles.ratingValue}>{item.rating}</Text>
+                    </View>
+                  </CustomCard>
                 </TouchableOpacity>
               )}
               ListEmptyComponent={
-                <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyText}>No movies found for this genre.</Text>
-                </View>
+                <CustomCard style={styles.emptyContainer}>
+                  <Text style={[styles.emptyText, { color: theme.textMuted }]}>
+                    No movies found for this genre.
+                  </Text>
+                </CustomCard>
               }
             />
           )}
@@ -170,7 +196,7 @@ export default function ExploreScreen() {
 
         <View style={styles.sectionListSection}>
           <Text style={styles.sectionLabel}>CURATED COLLECTIONS</Text>
-          <Text style={styles.sectionTitle}>Browse by Category</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Browse by Category</Text>
 
           <SectionList
             sections={SECTION_DATA}
@@ -183,14 +209,16 @@ export default function ExploreScreen() {
               </View>
             )}
             renderItem={({ item }) => (
-              <TouchableOpacity style={styles.sectionMovieCard} activeOpacity={0.75}>
-                <View style={styles.sectionMovieLeft}>
-                  <Text style={styles.sectionMovieTitle}>{item.title}</Text>
-                  <Text style={styles.sectionMovieStat}>{item.stat}</Text>
-                </View>
-                <View style={styles.genreTagSmall}>
-                  <Text style={styles.genreTagSmallText}>{item.genre}</Text>
-                </View>
+              <TouchableOpacity activeOpacity={0.75}>
+                <CustomCard style={styles.sectionMovieCard}>
+                  <View style={styles.sectionMovieLeft}>
+                    <Text style={[styles.sectionMovieTitle, { color: theme.text }]}>{item.title}</Text>
+                    <Text style={[styles.sectionMovieStat, { color: theme.textMuted }]}>{item.stat}</Text>
+                  </View>
+                  <View style={styles.genreTagSmall}>
+                    <Text style={styles.genreTagSmallText}>{item.genre}</Text>
+                  </View>
+                </CustomCard>
               </TouchableOpacity>
             )}
             SectionSeparatorComponent={() => <View style={styles.sectionSeparator} />}
@@ -204,7 +232,6 @@ export default function ExploreScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0B0E14',
   },
   scrollContent: {
     paddingBottom: 48,
@@ -233,12 +260,10 @@ const styles = StyleSheet.create({
   screenTitle: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#FFFFFF',
     marginBottom: 8,
   },
   screenSubtitle: {
     fontSize: 14,
-    color: '#94A3B8',
     lineHeight: 21,
   },
   filterSection: {
@@ -248,8 +273,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 4,
+    paddingRight: 20,
   },
   sectionLabel: {
     color: '#6366F1',
@@ -262,7 +286,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#FFFFFF',
     paddingHorizontal: 20,
     marginBottom: 16,
   },
@@ -270,20 +293,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   filterChip: {
-    backgroundColor: '#111827',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 24,
     marginRight: 10,
     borderWidth: 1,
-    borderColor: '#1F2937',
   },
   filterChipActive: {
     backgroundColor: '#4F46E5',
     borderColor: '#6366F1',
   },
   filterChipText: {
-    color: '#94A3B8',
     fontSize: 13,
     fontWeight: '600',
   },
@@ -298,28 +318,13 @@ const styles = StyleSheet.create({
     color: '#4ADE80',
     fontSize: 11,
     fontWeight: '600',
-    paddingHorizontal: 20,
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  loadingText: {
-    color: '#64748B',
-    fontSize: 13,
-    fontWeight: '500',
-    marginTop: 12,
   },
   movieRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: 20,
     marginBottom: 10,
-    backgroundColor: '#111827',
-    borderRadius: 14,
     padding: 14,
-    borderWidth: 1,
-    borderColor: '#1F2937',
   },
   movieRankBox: {
     width: 36,
@@ -339,10 +344,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   movieTitle: {
-    color: '#F8FAFC',
     fontSize: 15,
     fontWeight: '700',
     marginBottom: 5,
+    textTransform: 'capitalize',
   },
   movieMeta: {
     flexDirection: 'row',
@@ -361,7 +366,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   movieYear: {
-    color: '#475569',
     fontSize: 12,
     fontWeight: '500',
   },
@@ -370,25 +374,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginLeft: 8,
   },
-  ratingBaseline: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-  },
   ratingValue: {
     color: '#FCD34D',
     fontSize: 15,
     fontWeight: '800',
-  },
-  ratingMax: {
-    color: '#475569',
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  ratingStr: {
-    color: '#FCD34D',
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 2,
   },
   ratingStar: {
     color: '#FCD34D',
@@ -399,13 +388,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     alignItems: 'center',
     paddingVertical: 30,
-    backgroundColor: '#111827',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#1F2937',
   },
   emptyText: {
-    color: '#475569',
     fontSize: 14,
     fontWeight: '500',
   },
@@ -435,24 +419,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginHorizontal: 20,
     marginBottom: 8,
-    backgroundColor: '#111827',
-    borderRadius: 12,
     padding: 14,
-    borderWidth: 1,
-    borderColor: '#1F2937',
   },
   sectionMovieLeft: {
     flex: 1,
     marginRight: 8,
   },
   sectionMovieTitle: {
-    color: '#F8FAFC',
     fontSize: 14,
     fontWeight: '700',
     marginBottom: 4,
   },
   sectionMovieStat: {
-    color: '#64748B',
     fontSize: 12,
     fontWeight: '500',
   },

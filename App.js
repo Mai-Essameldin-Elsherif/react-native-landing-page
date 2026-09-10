@@ -2,6 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text, StyleSheet } from 'react-native';
+import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import HomeScreen from './screens/HomeScreen';
 import AddMovieScreen from './screens/AddMovieScreen';
 import ExploreScreen from './screens/ExploreScreen';
@@ -23,15 +24,23 @@ function TabIcon({ label, focused }) {
   );
 }
 
-export default function App() {
+function MainApp() {
+  const { theme } = useTheme();
+
   return (
     <NavigationContainer>
       <Tab.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,
-          tabBarStyle: styles.tabBar,
-          tabBarActiveTintColor: '#818CF8',
-          tabBarInactiveTintColor: '#475569',
+          tabBarStyle: [
+            styles.tabBar,
+            {
+              backgroundColor: theme.headerBg,
+              borderTopColor: theme.cardBorder,
+            },
+          ],
+          tabBarActiveTintColor: theme.primary,
+          tabBarInactiveTintColor: theme.textMuted,
           tabBarLabelStyle: styles.tabLabel,
           tabBarIcon: ({ focused }) => (
             <TabIcon label={route.name} focused={focused} />
@@ -58,14 +67,20 @@ export default function App() {
   );
 }
 
+export default function App() {
+  return (
+    <ThemeProvider>
+      <MainApp />
+    </ThemeProvider>
+  );
+}
+
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: '#0F1520',
-    borderTopWidth: 1,
-    borderTopColor: '#1F2937',
     height: 64,
     paddingBottom: 10,
     paddingTop: 6,
+    borderTopWidth: 1,
   },
   tabLabel: {
     fontSize: 11,
